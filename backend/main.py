@@ -77,9 +77,18 @@ async def get_reports(stock_code: str = "000001", keyword: Optional[str] = None,
 
 @app.get("/api/download")
 async def download_report(url: str, password: str = Depends(verify_password)):
-    # url usually looks like "http://www.cninfo.com.cn/new/announcement/download?bulletinId=..."
+    # url usually looks like "http://www.cninfo.com.cn/new/disclosure/detail?stockCode=...&announcementId=..."
+    # We want to convert it to a download URL:
+    # http://www.cninfo.com.cn/new/announcement/download?bulletinId=1218563079
+    
+    if "announcementId=" in url:
+        import re
+        match = re.search(r'announcementId=([0-9a-zA-Z]+)', url)
+        if match:
+            bulletin_id = match.group(1)
+            url = f"http://www.cninfo.com.cn/new/announcement/download?bulletinId={bulletin_id}"
+    
     if not url.startswith("http"):
-        # Prepend base url if it's just a path/ID
         if "bulletinId" in url:
             url = f"http://www.cninfo.com.cn/new/announcement/download?{url}"
         else:
