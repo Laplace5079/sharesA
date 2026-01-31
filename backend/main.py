@@ -83,17 +83,41 @@ async def download_report(url: str, password: str = Depends(verify_password)):
     
     if "announcementId=" in url:
         import re
-        match = re.search(r'announcementId=([0-9a-zA-Z]+)', url)
+        # Try to catch both alphanumeric and numeric IDs
+        match = re.search(r'announcementId=([0-9a-zA-Z_-]+)', url)
+        # Also try to find orgId if available
+        org_match = re.search(r'orgId=([0-9a-zA-Z_-]+)', url)
+        
         if match:
             bulletin_id = match.group(1)
-            url = f"http://www.cninfo.com.cn/new/announcement/download?bulletinId={bulletin_id}"
+            # Use direct PDF landing page link if orgId is present
+            if org_match:
+                org_id = org_match.group(1)
+                # This is the view page URL format
+                # http://www.cninfo.com.cn/new/disclosure/detail?orgId=gssz0000001&announcementId=1218563079
+                # But we want the DOWNLOAD version.
+                url = f"http://www.cninfo.com.cn/new/announcement/download?bulletinId={bulletin_id}"
+            else:
+                url = f"http://www.cninfo.com.cn/new/announcement/download?bulletinId={bulletin_id}"
     
+    # If the user is seeing a login page, it's often because of a referrer check or cookie.
+    # We can try to use the PDF link directly if it's formatted as a date
+    if "announcementId=" in url and "&announcementTime=" in url:
+        match = re.search(r'announcementId=([0-9a-zA-Z_-]+)', url)
+        date_match = re.search(r'announcementTime=([0-9-]{10})', url)
+        if match and date_match:
+            bid = match.group(1)
+            dt = date_match.group(1) # YYYY-MM-DD
+            # Direct link to static PDF file
+            url = f"http://static.cninfo.com.cn/finalpage/{dt}/{bid}.PDF"
+
     if not url.startswith("http"):
         if "bulletinId" in url:
             url = f"http://www.cninfo.com.cn/new/announcement/download?{url}"
         else:
             raise HTTPException(status_code=400, detail="Invalid URL")
     
+    # We use 302 redirect. 
     return RedirectResponse(url=url)
 
 @app.get("/")
