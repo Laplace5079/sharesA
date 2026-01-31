@@ -44,14 +44,22 @@ async def login(req: LoginRequest):
 async def get_reports(stock_code: str = "000001", keyword: Optional[str] = None, password: str = Depends(verify_password)):
     try:
         logger.info(f"Fetching reports for {stock_code} with keyword {keyword}")
-        # Fetch announcements from Cninfo
-        df = ak.stock_announcement_cninfo(symbol=stock_code)
+        # Fetch announcements from Cninfo using the correct method
+        df = ak.stock_zh_a_disclosure_report_cninfo(symbol=stock_code)
         
         if df is None or df.empty:
             return []
 
-        # Convert to list of dicts
-        reports = df.to_dict(orient="records")
+        # Map to expected frontend keys
+        # Expected keys: announcementTitle, adjunctUrl, announcementTime
+        # Actual columns: ['代码', '简称', '公告标题', '公告时间', '公告链接']
+        reports = []
+        for _, row in df.iterrows():
+            reports.append({
+                "announcementTitle": row['公告标题'],
+                "adjunctUrl": row['公告链接'],
+                "announcementTime": row['公告时间']
+            })
         
         # Filter by keyword if provided
         if keyword:
