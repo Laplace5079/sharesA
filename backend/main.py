@@ -77,48 +77,35 @@ async def get_reports(stock_code: str = "000001", keyword: Optional[str] = None,
 
 @app.get("/api/download")
 async def download_report(url: str, password: str = Depends(verify_password)):
-    # url usually looks like "http://www.cninfo.com.cn/new/disclosure/detail?stockCode=...&announcementId=..."
-    # We want to convert it to a download URL:
-    # http://www.cninfo.com.cn/new/announcement/download?bulletinId=1218563079
+    import re
+    logger.info(f"Download request for URL: {url}")
     
-    if "announcementId=" in url:
-        import re
-        # Try to catch both alphanumeric and numeric IDs
-        match = re.search(r'announcementId=([0-9a-zA-Z_-]+)', url)
-        # Also try to find orgId if available
-        org_match = re.search(r'orgId=([0-9a-zA-Z_-]+)', url)
-        
-        if match:
-            bulletin_id = match.group(1)
-            # Use direct PDF landing page link if orgId is present
-            if org_match:
-                org_id = org_match.group(1)
-                # This is the view page URL format
-                # http://www.cninfo.com.cn/new/disclosure/detail?orgId=gssz0000001&announcementId=1218563079
-                # But we want the DOWNLOAD version.
-                url = f"http://www.cninfo.com.cn/new/announcement/download?bulletinId={bulletin_id}"
-            else:
-                url = f"http://www.cninfo.com.cn/new/announcement/download?bulletinId={bulletin_id}"
+    # Priority: Try to construct static PDF link
+    # Example URL: http://www.cninfo.com.cn/new/disclosure/detail?stockCode=000001&announcementId=1218563079&orgId=gssz0000001&announcementTime=2023-12-09
     
-    # If the user is seeing a login page, it's often because of a referrer check or cookie.
-    # We can try to use the PDF link directly if it's formatted as a date
-    if "announcementId=" in url and "&announcementTime=" in url:
-        match = re.search(r'announcementId=([0-9a-zA-Z_-]+)', url)
-        date_match = re.search(r'announcementTime=([0-9-]{10})', url)
-        if match and date_match:
-            bid = match.group(1)
-            dt = date_match.group(1) # YYYY-MM-DD
-            # Direct link to static PDF file
-            url = f"http://static.cninfo.com.cn/finalpage/{dt}/{bid}.PDF"
+    bid_match = re.search(r'announcementId=([0-9a-zA-Z_-]+)', url)
+    time_match = re.search(r'announcementTime=([0-9-]{10})', url)
+    
+    if bid_match and time_match:
+        bid = bid_match.group(1)
+        dt = time_match.group(1)
+        # Construct the static path: http://static.cninfo.com.cn/finalpage/2023-12-09/1218563079.PDF
+        static_url = f"http://static.cninfo.com.cn/finalpage/{dt}/{bid}.PDF"
+        logger.info(f"Redirecting to static PDF: {static_url}")
+        return RedirectResponse(url=static_url)
+    
+    # Fallback 1: Just the ID
+    if bid_match:
+        bid = bid_match.group(1)
+        download_url = f"http://www.cninfo.com.cn/new/announcement/download?bulletinId={bid}"
+        logger.info(f"Redirecting to standard download: {download_url}")
+        return RedirectResponse(url=download_url)
 
-    if not url.startswith("http"):
-        if "bulletinId" in url:
-            url = f"http://www.cninfo.com.cn/new/announcement/download?{url}"
-        else:
-            raise HTTPException(status_code=400, detail="Invalid URL")
+    # Fallback 2: Direct URL if it's already a link
+    if url.startswith("http"):
+        return RedirectResponse(url=url)
     
-    # We use 302 redirect. 
-    return RedirectResponse(url=url)
+    raise HTTPException(status_code=400, detail="Invalid report URL")
 
 @app.get("/")
 async def read_index():
