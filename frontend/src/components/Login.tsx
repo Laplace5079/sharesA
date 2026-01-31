@@ -12,7 +12,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await axios.post('http://localhost:8000/api/login', { password });
+      const response = await axios.post('/api/login', { password });
       if (response.data.status === 'success') {
         onLogin(response.data.token);
       }

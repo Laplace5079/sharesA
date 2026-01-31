@@ -24,7 +24,7 @@ const ReportList: React.FC<ReportListProps> = ({ token, onLogout }) => {
     setLoading(true);
     setError('');
     try {
-      const response = await axios.get(`http://localhost:8000/api/reports`, {
+      const response = await axios.get(`/api/reports`, {
         params: { stock_code: stockCode, keyword: keyword || undefined },
         headers: { 'X-Password': token }
       });
@@ -42,7 +42,7 @@ const ReportList: React.FC<ReportListProps> = ({ token, onLogout }) => {
 
   const handleDownload = (url: string) => {
     const fullUrl = url.startsWith('http') ? url : `http://www.cninfo.com.cn/new/announcement/download?bulletinId=${url}`;
-    window.open(`http://localhost:8000/api/download?url=${encodeURIComponent(fullUrl)}&X-Password=${token}`, '_blank');
+    window.open(`/api/download?url=${encodeURIComponent(fullUrl)}&X-Password=${token}`, '_blank');
   };
 
   return (
