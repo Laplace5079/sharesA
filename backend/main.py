@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends, Security
+from fastapi import FastAPI, HTTPException, Depends, Security, Query
 from fastapi.security import APIKeyHeader
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -27,7 +27,11 @@ app.add_middleware(
 VALID_PASSWORDS = ['friday_A66', 'shares_B88', 'report_C99', 'fast_D22', 'stock_E11']
 api_key_header = APIKeyHeader(name="X-Password", auto_error=False)
 
-def verify_password(password: str = Security(api_key_header)):
+def verify_password(
+    password_header: str = Security(api_key_header),
+    password_query: Optional[str] = Query(None, alias="X-Password")
+):
+    password = password_header or password_query
     if not password or password not in VALID_PASSWORDS:
         raise HTTPException(status_code=403, detail="Invalid password")
     return password
