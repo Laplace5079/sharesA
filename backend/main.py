@@ -5,8 +5,9 @@ from pydantic import BaseModel
 from typing import List, Optional
 import akshare as ak
 import pandas as pd
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, FileResponse
 import logging
+import os
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -81,6 +82,10 @@ async def download_report(url: str, password: str = Depends(verify_password)):
             raise HTTPException(status_code=400, detail="Invalid URL")
     
     return RedirectResponse(url=url)
+
+@app.get("/")
+async def read_index():
+    return FileResponse('index.html')
 
 if __name__ == "__main__":
     import uvicorn
